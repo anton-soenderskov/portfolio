@@ -2,21 +2,30 @@ package server
 
 import (
 	"net/http"
+	"path/filepath"
 )
 
 func CreateServer() error {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.FileServer(http.Dir(".")).ServeHTTP(w, r)
-	})
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
-	mux.HandleFunc("/about", func(w http.ResponseWriter, r *http.Request) {
-		http.FileServer(http.Dir("./pages/about.html")).ServeHTTP(w, r)
-	})
+	mux.HandleFunc("/", serveHTML("index.html"))
+	mux.HandleFunc("/about", serveHTML("pages/about.html"))
+	mux.HandleFunc("/projects", serveHTML("pages/projects.html"))
+	mux.HandleFunc("/blog", serveHTML("pages/blog.html"))
 
-	server := http.Server{}
-	server.Handler = mux
-	server.Addr = ":8080"
+	server := http.Server{
+		Handler: mux,
+		Addr:    ":8080",
+	}
+
 	return server.ListenAndServe()
+}
+
+func serveHTML(filename string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		http.ServeFile(w, r, filepath.Clean(filename))
+	}
 }
